@@ -1,0 +1,9 @@
+{
+  "business_overview": "string — business name, location, industry, company type, brief industry context",
+  "loan_structure": "string — loan amount, SBA guarantee, term, lender, approval date, delivery method",
+  "credit_analysis": "string — monthly payment, guarantee coverage %, term band, industry risk tier, risk band, repayment flag",
+  "repayment_capacity": "string — assessment of ability to service debt from available signals",
+  "risk_factors": "string — specific risks for this borrower: industry, loan structure, history",
+  "mitigants": "string — factors that reduce identified risks",
+  "recommendation": "string — Approve / Decline / Approve with Conditions + reasoning + human sign-off notice"
+}
