@@ -65,29 +65,23 @@ def _add_recommendation_box(doc: Document, text: str) -> None:
 
 
 def render(memo: dict, borrower_name: str, approval_date: str, output_dir: str | Path) -> Path:
-    """
-    Render a memo dictionary to a .docx file.
-
-    Args:
-        memo: Parsed memo JSON from generate stage.
-        borrower_name: Used in the filename.
-        approval_date: Used in the filename.
-        output_dir: Directory to write the .docx file.
-
-    Returns:
-        Path to the generated .docx file.
-    """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     doc = Document()
 
-    # Title
+    # Title block
     title = doc.add_heading("SME Credit Memo", 0)
     title.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    doc.add_paragraph(f"Generated: {datetime.now().strftime('%d %B %Y')}")
-    doc.add_paragraph(f"Borrower: {borrower_name}")
-    doc.add_paragraph("─" * 60)
+
+    # Header metadata
+    meta = doc.add_paragraph()
+    meta.paragraph_format.space_before = Pt(4)
+    meta.paragraph_format.space_after = Pt(2)
+    run = meta.add_run(f"Generated: {datetime.now().strftime('%d %B %Y')}    |    Borrower: {borrower_name}")
+    run.font.size = Pt(10)
+    run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+    run.font.name = BODY_FONT
 
     section_labels = {
         "business_overview": "1. Business Overview",
@@ -107,7 +101,6 @@ def render(memo: dict, borrower_name: str, approval_date: str, output_dir: str |
         else:
             _add_heading(doc, label, level=1)
             _add_body(doc, str(content))
-        doc.add_paragraph()
 
     # Sanitise filename
     safe_name = "".join(c for c in borrower_name if c.isalnum() or c in " _-").strip().replace(" ", "_")

@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 sba_schema = DataFrameSchema(
     columns={
-        "borrname": Column(str, nullable=False),
+        "borrname": Column(str, nullable=True),  # clean.py drops nulls downstream
         "borrstate": Column(str, nullable=True),
         "grossapproval": Column(float, checks=Check.greater_than(0), nullable=False),
         "sbaguaranteedapproval": Column(float, checks=Check.greater_than_or_equal_to(0), nullable=True),
-        "terminmonths": Column(float, checks=Check.greater_than(0), nullable=True),
+        "terminmonths": Column(float, checks=Check.greater_than_or_equal_to(0), nullable=True),  # 0 handled in clean
         "loanstatus": Column(str, nullable=True),
         "naicscode": Column(object, nullable=True),
     },
