@@ -38,22 +38,22 @@ def build_user_message(row: pd.Series) -> str:
     """
     payload = {
         "borrower": {
-            "name": str(row.get("BorrName", "Unknown")),
-            "city": str(row.get("BorrCity", "Unknown")),
-            "state": str(row.get("BorrState", "Unknown")),
-            "business_type": str(row.get("BusinessType", "Unknown")),
-            "industry": str(row.get("NaicsDescription", "Unknown")),
-            "naics_code": str(row.get("NaicsCode", "Unknown")),
+            "name": str(row.get("borrname", "Unknown")),
+            "city": str(row.get("borrcity", "Unknown")),
+            "state": str(row.get("borrstate", "Unknown")),
+            "business_type": str(row.get("businesstype", "Unknown")),
+            "industry": str(row.get("naicsdescription", "Unknown")),
+            "naics_code": str(row.get("naicscode", "Unknown")),
         },
         "loan": {
-            "gross_approval": _format_currency(row.get("GrossApproval")),
-            "sba_guaranteed": _format_currency(row.get("SBAGuaranteedApproval")),
-            "term_months": int(row["TermInMonths"]) if pd.notna(row.get("TermInMonths")) else None,
-            "approval_date": str(row["ApprovalDate"].date()) if pd.notna(row.get("ApprovalDate")) else None,
-            "delivery_method": str(row.get("DeliveryMethod", "Unknown")),
-            "lender": str(row.get("BankName", "Unknown")),
-            "lender_state": str(row.get("BankState", "Unknown")),
-            "loan_status": str(row.get("LoanStatus", "Unknown")),
+            "gross_approval": _format_currency(row.get("grossapproval")),
+            "sba_guaranteed": _format_currency(row.get("sbaguaranteedapproval")),
+            "term_months": int(row["terminmonths"]) if pd.notna(row.get("terminmonths")) else None,
+            "approval_date": str(row["approvaldate"].date()) if pd.notna(row.get("approvaldate")) else None,
+            "delivery_method": str(row.get("processingmethod", "Unknown")),
+            "lender": str(row.get("bankname", "Unknown")),
+            "lender_state": str(row.get("bankstate", "Unknown")),
+            "loan_status": str(row.get("loanstatus", "Unknown")),
         },
         "credit_analysis": {
             "monthly_payment": _format_currency(row.get("monthly_payment")),
@@ -66,7 +66,6 @@ def build_user_message(row: pd.Series) -> str:
     }
 
     return json.dumps(payload, indent=2, default=str)
-
 
 def build_prompt(row: pd.Series) -> tuple[str, str]:
     """
