@@ -7,23 +7,23 @@ Fails fast on critical violations. Logs warnings on soft failures.
 import logging
 
 import pandas as pd
-import pandera as pa
-from pandera import Column, DataFrameSchema, Check
+import pandera.pandas as pa
+from pandera.pandas import Column, DataFrameSchema, Check
 
 logger = logging.getLogger(__name__)
 
 sba_schema = DataFrameSchema(
     columns={
-        "BorrName": Column(str, nullable=False),
-        "BorrState": Column(str, nullable=True),
-        "GrossApproval": Column(float, checks=Check.greater_than(0), nullable=False),
-        "SBAGuaranteedApproval": Column(float, checks=Check.greater_than_or_equal_to(0), nullable=True),
-        "TermInMonths": Column(float, checks=Check.greater_than(0), nullable=True),
-        "LoanStatus": Column(str, nullable=True),
-        "NaicsCode": Column(object, nullable=True),
+        "borrname": Column(str, nullable=False),
+        "borrstate": Column(str, nullable=True),
+        "grossapproval": Column(float, checks=Check.greater_than(0), nullable=False),
+        "sbaguaranteedapproval": Column(float, checks=Check.greater_than_or_equal_to(0), nullable=True),
+        "terminmonths": Column(float, checks=Check.greater_than(0), nullable=True),
+        "loanstatus": Column(str, nullable=True),
+        "naicscode": Column(object, nullable=True),
     },
     coerce=True,
-    strict=False,  # Allow extra columns
+    strict=False,
 )
 
 

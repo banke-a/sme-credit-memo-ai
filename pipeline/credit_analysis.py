@@ -120,12 +120,12 @@ def analyse(row: pd.Series) -> dict:
     Returns:
         Dictionary of calculated credit metrics to pass to the LLM prompt.
     """
-    monthly_payment = _monthly_payment(row.get("GrossApproval"), row.get("TermInMonths"))
-    guarantee_pct = _guarantee_pct(row.get("SBAGuaranteedApproval"), row.get("GrossApproval"))
-    term_band = _term_band(row.get("TermInMonths"))
-    industry_name, industry_risk = _industry_risk(row.get("NaicsCode"))
-    risk_band = _risk_band(row.get("LoanStatus"), guarantee_pct, term_band)
-    repayment_flag = _repayment_flag(row.get("LoanStatus"))
+    monthly_payment = _monthly_payment(row.get("grossapproval"), row.get("terminmonths"))
+    guarantee_pct = _guarantee_pct(row.get("sbaguaranteedapproval"), row.get("grossapproval"))
+    term_band = _term_band(row.get("terminmonths"))
+    industry_name, industry_risk = _industry_risk(row.get("naicscode"))
+    risk_band = _risk_band(row.get("loanstatus"), guarantee_pct, term_band)
+    repayment_flag = _repayment_flag(row.get("loanstatus"))
 
     return {
         "monthly_payment": monthly_payment,

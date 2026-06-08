@@ -25,29 +25,30 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     # Standardise string fields
-    for col in ["BorrName", "BorrCity", "BorrState", "BusinessType", "LoanStatus",
-                "BankName", "NaicsDescription", "DeliveryMethod"]:
+    for col in ["borrname", "borrcity", "borrstate", "businesstype", "loanstatus",
+            "bankname", "naicsdescription", "processingmethod"]:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip().str.title()
             df[col] = df[col].replace("Nan", np.nan)
 
     # Coerce numeric fields
-    for col in ["GrossApproval", "SBAGuaranteedApproval", "TermInMonths", "InitialInterestRate"]:
+    for col in ["grossapproval", "sbaguaranteedapproval", "terminmonths", "initialinterestrate"]:
+
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Parse dates
-    for col in ["ApprovalDate", "ChargeOffDate"]:
+    for col in ["approvaldate", "chargeoffdate"]:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
 
     # Normalise NAICS code to string
-    if "NaicsCode" in df.columns:
-        df["NaicsCode"] = df["NaicsCode"].astype(str).str.zfill(6).replace("000000", np.nan)
+    if "naicsCode" in df.columns:
+        df["naicsCode"] = df["naicsCode"].astype(str).str.zfill(6).replace("000000", np.nan)
 
     # Drop rows with no borrower name or loan amount — unusable records
     before = len(df)
-    df = df.dropna(subset=["BorrName", "GrossApproval"])
+    df = df.dropna(subset=["borrname", "grossapproval"])
     dropped = before - len(df)
     if dropped:
         logger.warning(f"Dropped {dropped:,} rows missing BorrName or GrossApproval")
