@@ -1,3 +1,11 @@
+---
+title: SME Credit Memo Generator
+emoji: 📋
+colorFrom: gray
+colorTo: gray
+sdk: docker
+pinned: false
+---
 # AI-Powered SME Credit Memo Generator
 
 ## Research Question
