@@ -224,3 +224,4 @@ output/memos/
 output/logs/
 .DS_Store
 Thumbs.db
+!data/sample/

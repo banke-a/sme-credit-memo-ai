@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SME Credit Memo Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-dark: #0d1117;
+    --bg-dark-2: #161b22;
+    --border-dark: #30363d;
+    --text-light: #ffffff;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #f0f2f5;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.2);
+    --text-primary: #1c2128;
+    --text-secondary: #57606a;
+    --text-tertiary: #8c959f;
+    --green: #1D9E75;
+    --green-bg: #e1f5ee;
+    --green-border: #5DCAA5;
+    --amber: #854F0B;
+    --amber-bg: #faeeda;
+    --amber-border: #EF9F27;
+    --red: #A32D2D;
+    --red-bg: #fcebeb;
+    --red-border: #F09595;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body { font-family: var(--mono); background: var(--bg-tertiary); color: #1c2128; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* HEADER */
+  .header { background: var(--bg-dark); padding: 13px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-dark); position: sticky; top: 0; z-index: 100; }
+  .header-left h1 { font-size: 12px; font-weight: 500; color: #ffffff; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+  .header-left p { font-size: 11px; color: #c9d1d9; letter-spacing: 0.03em; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .pin-input { background: var(--bg-dark-2); border: 1px solid var(--border-dark); color: #ffffff; font-family: var(--mono); font-size: 12px; padding: 6px 10px; width: 110px; letter-spacing: 0.15em; outline: none; transition: border-color 0.15s; }
+  .pin-input:focus { border-color: #8b949e; }
+  .pin-input::placeholder { color: #8b949e; letter-spacing: 0.05em; }
+  .generate-btn { background: #e6edf3; color: #0d1117; border: none; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 7px 16px; cursor: pointer; transition: background 0.15s, opacity 0.15s; white-space: nowrap; }
+  .generate-btn:hover { background: #2d333b; }
+  .generate-btn.loading { opacity: 0.7; }
+
+  /* STATS BAR */
+  .stats-bar { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--bg-primary); border-bottom: 1px solid var(--border); }
+  .stat-cell { padding: 12px 20px; border-right: 1px solid var(--border); }
+  .stat-cell:last-child { border-right: none; }
+  .stat-label { font-size: 10px; color: #1c2128; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 600; color: #1c2128; }
+  .stat-value.approve { color: var(--green); }
+  .stat-value.decline { color: var(--red); }
+  .stat-value.conditions { color: #BA7517; }
+  .stat-value.muted { color: #1c2128; }
+
+  /* MAIN LAYOUT */
+  .main { display: grid; grid-template-columns: 300px 1fr; flex: 1; min-height: calc(100vh - 120px); }
+
+  /* SIDEBAR */
+  .sidebar { background: var(--bg-primary); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .sidebar-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .section-title { font-size: 10px; color: #1c2128; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 10px; }
+  .form-label { font-size: 10px; color: #1c2128; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 5px; display: block; }
+  .form-select { width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); color: #1c2128; font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; appearance: none; cursor: pointer; margin-bottom: 12px; transition: border-color 0.15s; }
+  .form-select:focus { border-color: var(--border-strong); }
+  .form-select:last-child { margin-bottom: 0; }
+
+  /* RECORD PREVIEW */
+  .record-preview { background: var(--bg-secondary); border: 1px solid var(--border); margin-top: 10px; }
+  .record-preview-title { padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 10px; color: #1c2128; letter-spacing: 0.06em; text-transform: uppercase; }
+  .record-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; border-bottom: 1px solid var(--border); }
+  .record-row:last-child { border-bottom: none; }
+  .record-key { font-size: 10px; color: #1c2128; text-transform: uppercase; letter-spacing: 0.04em; }
+  .record-val { font-size: 11px; color: #1c2128; font-weight: 500; text-align: right; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* MEMO HISTORY LIST */
+  .memo-list-header { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .memo-list { flex: 1; overflow-y: auto; }
+  .memo-item { padding: 10px 16px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: flex-start; transition: background 0.1s; }
+  .memo-item:hover { background: var(--bg-secondary); }
+  .memo-item.active { background: var(--bg-secondary); border-left: 2px solid var(--bg-dark); padding-left: 14px; }
+  .memo-name { font-size: 11px; font-weight: 500; color: #1c2128; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+  .memo-meta { font-size: 10px; color: #57606a; }
+  .rec-badge { font-size: 9px; padding: 2px 7px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; border: 1px solid; }
+  .badge-approve { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+  .badge-decline { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+  .badge-conditions { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-border); }
+  .badge-pending { background: var(--bg-secondary); color: #57606a; border-color: var(--border); }
+
+  /* CONTENT PANEL */
+  .content { background: var(--bg-primary); display: flex; flex-direction: column; overflow-y: auto; }
+
+  /* EMPTY STATE */
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 40px; color: #1c2128; text-align: center; }
+  .empty-icon { font-size: 32px; opacity: 0.3; margin-bottom: 4px; }
+  .empty-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #1c2128; }
+  .empty-sub { font-size: 11px; line-height: 1.7; max-width: 260px; color: #1c2128; }
+
+  /* CONTENT HEADER */
+  .content-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; position: sticky; top: 0; background: var(--bg-primary); z-index: 10; }
+  .content-title { font-size: 13px; font-weight: 500; color: #1c2128; margin-bottom: 3px; }
+  .content-sub { font-size: 11px; color: #57606a; }
+  .content-actions { display: flex; gap: 8px; flex-shrink: 0; margin-left: 16px; }
+  .action-btn { font-size: 10px; font-family: var(--mono); letter-spacing: 0.04em; padding: 5px 10px; background: transparent; border: 1px solid var(--border-strong); color: #1c2128; cursor: pointer; text-transform: uppercase; transition: all 0.15s; white-space: nowrap; }
+  .action-btn:hover { background: var(--bg-secondary); color: #1c2128; }
+
+  /* CREDIT METRICS */
+  .credit-metrics { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); }
+  .cm-cell { padding: 12px 16px; border-right: 1px solid var(--border); }
+  .cm-cell:last-child { border-right: none; }
+  .cm-label { font-size: 10px; color: #1c2128; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+  .cm-value { font-size: 18px; font-weight: 600; color: #1c2128; }
+  .cm-value.low { color: var(--green); }
+  .cm-value.medium { color: #BA7517; }
+  .cm-value.high { color: var(--red); }
+  .cm-sub { font-size: 10px; color: #57606a; margin-top: 3px; }
+
+  /* MEMO SECTIONS */
+  .memo-sections { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .memo-section { border: 1px solid var(--border); }
+  .ms-header { padding: 8px 14px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .ms-title { font-size: 10px; font-weight: 500; color: #1c2128; letter-spacing: 0.07em; text-transform: uppercase; }
+  .ms-number { font-size: 10px; color: #57606a; }
+  .ms-body { padding: 12px 14px; font-size: 12px; color: #1c2128; line-height: 1.8; font-family: var(--sans); }
+
+  /* RECOMMENDATION BOX */
+  .rec-section { border: 1px solid var(--green-border); }
+  .rec-section .ms-header { background: var(--green-bg); border-bottom: 1px solid var(--green-border); }
+  .rec-section .ms-title { color: #0F6E56; }
+  .rec-section .ms-body { color: #04342C; background: var(--green-bg); font-family: var(--sans); }
+  .rec-signoff { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--green-border); font-size: 10px; color: #0F6E56; letter-spacing: 0.05em; text-transform: uppercase; font-family: var(--mono); }
+
+  /* LOADING */
+  .loading-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 60px; }
+  .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: #1c2128; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-steps { display: flex; flex-direction: column; gap: 6px; }
+  .loading-step { font-size: 11px; color: #57606a; letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; }
+  .loading-step.active { color: #1c2128; }
+  .loading-step.done { color: var(--green); }
+  .step-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* ERROR */
+  .error-msg { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); padding: 8px 12px; font-size: 11px; margin: 12px 20px; }
+
+  /* PIN ERROR */
+  .pin-error { font-size: 10px; color: #e24b4a; letter-spacing: 0.04em; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--bg-dark); color: #ffffff; font-size: 11px; padding: 10px 16px; letter-spacing: 0.04em; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 200; }
+  .toast.show { opacity: 1; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>SME Credit Memo Generator</h1>
+    <p>SBA 7(a) loan data &nbsp;·&nbsp; AI-assisted credit assessment &nbsp;·&nbsp; Decision support only</p>
+  </div>
+  <div class="header-right">
+    <span class="pin-error" id="pin-error"></span>
+    <input class="pin-input" type="password" id="pin-input" placeholder="PIN" maxlength="6" autocomplete="off" />
+    <button class="generate-btn" id="generate-btn">Generate memo →</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-cell">
+    <div class="stat-label">Memos generated</div>
+    <div class="stat-value muted" id="stat-total">0</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Approve</div>
+    <div class="stat-value approve" id="stat-approve">0</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Conditions</div>
+    <div class="stat-value conditions" id="stat-conditions">0</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Decline</div>
+    <div class="stat-value decline" id="stat-decline">0</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Selected risk band</div>
+    <div class="stat-value muted" id="stat-risk">—</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-title">Select borrower</div>
+      <label class="form-label">Borrower name</label>
+      <select class="form-select" id="borrower-select">
+        <option value="">Loading borrowers...</option>
+      </select>
+      <div class="record-preview" id="record-preview" style="display:none;">
+        <div class="record-preview-title">Record preview</div>
+        <div id="record-rows"></div>
+      </div>
+    </div>
+    <div class="memo-list-header">
+      <div class="section-title">Generated memos</div>
+    </div>
+    <div class="memo-list" id="memo-list"></div>
+  </div>
+
+  <div class="content" id="content">
+    <div class="empty-state">
+      <div class="empty-icon">◻</div>
+      <div class="empty-title">No memo selected</div>
+      <div class="empty-sub">Select a borrower from the dropdown, enter your PIN, and click Generate memo to begin.</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+const memoHistory = [];
+let stats = { total: 0, approve: 0, conditions: 0, decline: 0 };
+let currentBorrower = null;
+let currentRecord = null;
+
+const pinInput = document.getElementById('pin-input');
+const generateBtn = document.getElementById('generate-btn');
+const pinError = document.getElementById('pin-error');
+
+pinInput.addEventListener('input', () => {
+  pinError.textContent = '';
+});
+
+async function loadBorrowers() {
+  try {
+    const res = await fetch(`${API}/api/borrowers`);
+    const data = await res.json();
+    const select = document.getElementById('borrower-select');
+    select.innerHTML = '<option value="">— Select a borrower —</option>';
+    data.borrowers.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    document.getElementById('borrower-select').innerHTML = '<option value="">Failed to load — is the server running?</option>';
+  }
+}
+
+document.getElementById('borrower-select').addEventListener('change', async (e) => {
+  const name = e.target.value;
+  if (!name) {
+    document.getElementById('record-preview').style.display = 'none';
+    document.getElementById('stat-risk').textContent = '—';
+    currentBorrower = null;
+    currentRecord = null;
+    return;
+  }
+  currentBorrower = name;
+  await loadRecordPreview(name);
+});
+
+async function loadRecordPreview(name) {
+  try {
+    const res = await fetch(`${API}/api/borrower/${encodeURIComponent(name)}`);
+    if (!res.ok) return;
+    const record = await res.json();
+    currentRecord = record;
+    const fields = [
+      ['Loan amount', record.loan_amount],
+      ['SBA guaranteed', record.sba_guaranteed],
+      ['Guarantee %', record.guarantee_pct],
+      ['Term', record.term_months],
+      ['Monthly payment', record.monthly_payment],
+      ['Industry', record.industry],
+      ['Status', record.loan_status],
+      ['Lender', record.lender],
+    ];
+    document.getElementById('record-rows').innerHTML = fields.map(([k, v]) => `
+      <div class="record-row">
+        <span class="record-key">${k}</span>
+        <span class="record-val" title="${v}">${v || '—'}</span>
+      </div>
+    `).join('');
+    document.getElementById('record-preview').style.display = 'block';
+    document.getElementById('stat-risk').textContent = record.risk_band || '—';
+  } catch (e) {
+    console.error('Failed to load record', e);
+  }
+}
+
+generateBtn.addEventListener('click', async () => {
+  if (!pinInput.value || pinInput.value.length < 4) { showToast('Enter your PIN to generate a memo'); return; }
+  if (!currentBorrower) { showToast('Select a borrower first'); return; }
+  const pin = pinInput.value;
+  pinError.textContent = '';
+  generateBtn.disabled = true;
+  generateBtn.textContent = 'Generating...';
+  generateBtn.classList.add('loading');
+  showLoadingState();
+  try {
+    const res = await fetch(`${API}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ borrower_name: currentBorrower, pin }),
+    });
+    if (res.status === 401) { pinError.textContent = 'Incorrect PIN'; showEmptyState(); return; }
+    if (!res.ok) { const err = await res.json(); showError(err.detail || 'Generation failed'); return; }
+    const data = await res.json();
+    addToHistory(data);
+    renderMemo(data);
+    updateStats(data.memo.recommendation);
+    showToast('Memo generated');
+  } catch (e) {
+    showError('Server error — is the API running?');
+  } finally {
+    generateBtn.disabled = false;
+    generateBtn.textContent = 'Generate memo →';
+    generateBtn.classList.remove('loading');
+  }
+});
+
+function renderMemo(data) {
+  const memo = data.memo;
+  const metrics = data.credit_metrics;
+  const riskClass = (metrics.risk_band || '').toLowerCase();
+  const sections = [
+    { key: 'business_overview', label: 'Business Overview', num: '01' },
+    { key: 'loan_structure', label: 'Loan Structure', num: '02' },
+    { key: 'credit_analysis', label: 'Credit Analysis', num: '03' },
+    { key: 'repayment_capacity', label: 'Repayment Capacity', num: '04' },
+    { key: 'risk_factors', label: 'Risk Factors', num: '05' },
+    { key: 'mitigants', label: 'Mitigants', num: '06' },
+  ];
+  document.getElementById('content').innerHTML = `
+    <div class="content-header">
+      <div>
+        <div class="content-title">${escHtml(data.borrower_name)} — Credit Memo</div>
+        <div class="content-sub">SBA 7(a) · Approved ${escHtml(data.approval_date)} · ${escHtml(currentRecord?.lender || '—')}</div>
+      </div>
+      <div class="content-actions">
+        <button class="action-btn" onclick="downloadMemo()">↓ Download .docx</button>
+        <button class="action-btn" onclick="regenerateMemo()">↺ Regenerate</button>
+      </div>
+    </div>
+    <div class="credit-metrics">
+      <div class="cm-cell"><div class="cm-label">Monthly payment</div><div class="cm-value">${escHtml(metrics.monthly_payment)}</div><div class="cm-sub">Gross approval / term</div></div>
+      <div class="cm-cell"><div class="cm-label">SBA guarantee</div><div class="cm-value">${escHtml(metrics.guarantee_pct)}</div><div class="cm-sub">Of total loan amount</div></div>
+      <div class="cm-cell"><div class="cm-label">Risk band</div><div class="cm-value ${riskClass}">${escHtml(metrics.risk_band)}</div><div class="cm-sub">Composite score</div></div>
+      <div class="cm-cell"><div class="cm-label">Industry risk</div><div class="cm-value">${escHtml(metrics.industry_risk_tier)}</div><div class="cm-sub">NAICS classification</div></div>
+    </div>
+    <div class="memo-sections">
+      ${sections.map(s => `
+        <div class="memo-section">
+          <div class="ms-header"><div class="ms-title">${s.label}</div><div class="ms-number">${s.num}</div></div>
+          <div class="ms-body">${escHtml(memo[s.key] || 'Not available.')}</div>
+        </div>
+      `).join('')}
+      <div class="memo-section rec-section">
+        <div class="ms-header"><div class="ms-title">Recommendation</div><div class="ms-number">07</div></div>
+        <div class="ms-body">
+          ${escHtml(memo.recommendation || 'Not available.')}
+          <div class="rec-signoff">⚠ Decision support only — human review and sign-off required before any lending decision is made</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function addToHistory(data) {
+  const rec = currentRecord;
+  const recommendation = (data.memo.recommendation || '').toLowerCase();
+  const recLabel = recommendation.includes('approve with') ? 'Conditions'
+    : recommendation.includes('approve') ? 'Approve'
+    : recommendation.includes('decline') ? 'Decline' : '—';
+  const badgeClass = recLabel === 'Approve' ? 'badge-approve'
+    : recLabel === 'Decline' ? 'badge-decline'
+    : recLabel === 'Conditions' ? 'badge-conditions' : 'badge-pending';
+  memoHistory.unshift({ data, recLabel, badgeClass, borrowerName: data.borrower_name, rec });
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('memo-list');
+  if (!memoHistory.length) { list.innerHTML = ''; return; }
+  list.innerHTML = memoHistory.map((item, i) => `
+    <div class="memo-item ${i === 0 ? 'active' : ''}" onclick="selectHistoryItem(${i})">
+      <div>
+        <div class="memo-name" title="${escHtml(item.borrowerName)}">${escHtml(item.borrowerName)}</div>
+        <div class="memo-meta">${escHtml(item.rec?.loan_amount || '—')} · ${escHtml((item.rec?.industry || '').split(' ').slice(0,3).join(' '))}</div>
+      </div>
+      <span class="rec-badge ${item.badgeClass}">${item.recLabel}</span>
+    </div>
+  `).join('');
+}
+
+function selectHistoryItem(idx) {
+  document.querySelectorAll('.memo-item').forEach((el, i) => el.classList.toggle('active', i === idx));
+  currentBorrower = memoHistory[idx].borrowerName;
+  currentRecord = memoHistory[idx].rec;
+  renderMemo(memoHistory[idx].data);
+}
+
+function updateStats(recommendation) {
+  const rec = (recommendation || '').toLowerCase();
+  stats.total++;
+  if (rec.includes('approve with')) stats.conditions++;
+  else if (rec.includes('approve')) stats.approve++;
+  else if (rec.includes('decline')) stats.decline++;
+  document.getElementById('stat-total').textContent = stats.total;
+  document.getElementById('stat-approve').textContent = stats.approve;
+  document.getElementById('stat-conditions').textContent = stats.conditions;
+  document.getElementById('stat-decline').textContent = stats.decline;
+}
+
+function downloadMemo() {
+  if (!currentBorrower || !pinInput.value) { showToast('Enter PIN to download'); return; }
+  window.open(`${API}/api/download/${encodeURIComponent(currentBorrower)}?pin=${encodeURIComponent(pinInput.value)}`, '_blank');
+}
+
+function regenerateMemo() { generateBtn.click(); }
+
+function showEmptyState() {
+  document.getElementById('content').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">◻</div>
+      <div class="empty-title">No memo selected</div>
+      <div class="empty-sub">Select a borrower from the dropdown, enter your PIN, and click Generate memo to begin.</div>
+    </div>`;
+}
+
+function showLoadingState() {
+  const steps = ['Loading SBA record','Running credit analysis','Constructing prompt','Calling Claude API','Parsing structured output','Rendering memo'];
+  document.getElementById('content').innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <div class="loading-steps">
+        ${steps.map((s, i) => `<div class="loading-step ${i===0?'active':''}" id="step-${i}"><div class="step-dot"></div>${s}</div>`).join('')}
+      </div>
+    </div>`;
+  let cur = 0;
+  const iv = setInterval(() => {
+    const el = document.getElementById(`step-${cur}`);
+    if (el) { el.classList.remove('active'); el.classList.add('done'); }
+    cur++;
+    const nx = document.getElementById(`step-${cur}`);
+    if (nx) nx.classList.add('active');
+    if (cur >= steps.length) clearInterval(iv);
+  }, 1200);
+}
+
+function showError(msg) {
+  document.getElementById('content').innerHTML = `
+    <div class="error-msg">Error: ${escHtml(msg)}</div>
+    <div class="empty-state"><div class="empty-sub">Check the API server is running and try again.</div></div>`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+loadBorrowers();
+</script>
+</body>
+</html>
